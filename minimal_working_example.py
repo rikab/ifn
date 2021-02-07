@@ -34,9 +34,11 @@ pre_train_batch_size = 128
 # ########## DATASET ##########
 # #############################
 
-N = 100000
-Y = np.random.uniform(low = -3, high = 3, size = (N, y_dim))
-X = Y + np.random.normal(size = (N, x_dim))
+N = 250000
+
+# Dataset: X = x + noise, Y = x^2
+X = np.random.uniform(low = -5, high = 5, size = (N, x_dim))
+Y = X + np.random.normal(scale = 1, size = (N, x_dim))
 
 # ############################
 # ########## MODELS ##########
@@ -48,7 +50,7 @@ model_B = DNN(x_dim, [32, 32, 32, 32], y_dim)
 model_C = DNN([x_dim, y_dim], [32, 32, 32, 32], [y_dim, y_dim], symmetrize=False)
 model_D = DNN(x_dim, [32, 32, 32, 32], y_dim, l2_regs= 0.1)
 
-ifn = gIFN(model_A, model_B, model_C, model_D)
+ifn = gIFN(model_A, model_B, model_C, model_D, d_multiplier= 0.0)
 
 # Loss Function
 def f_loss(out_joint, out_marginal):
@@ -59,7 +61,7 @@ def MI(out_joint, out_marginal):
 
 # Compile and fit
 ifn.compile(loss=f_loss, optimizer="adam", metrics = [MI])
-# ifn.pre_train([X,Y], epochs = pre_train_epochs, batch_size= pre_train_batch_size, verbose = True)
+ifn.pre_train([X,Y], epochs = pre_train_epochs, batch_size= pre_train_batch_size, verbose = True)
 ifn.fit([X, Y],
             batch_size= batch_size,
             epochs = epochs)
@@ -70,7 +72,7 @@ ifn.fit([X, Y],
 # ########## PLOTS AND TESTS ##########
 # #####################################
 
-x_test = np.array([ -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0])
+x_test = np.array([-5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0])
 y_pred = ifn.maximum_likelihood(x_test)
 covariance = ifn.covariance(x_test)
 sigmas = np.sqrt(np.abs(covariance[:,0,0]))
@@ -80,8 +82,8 @@ for i,j,k in zip(x_test, y_pred, covariance):
 
 
 # Plotting meshes
-x = np.linspace(-3, 3, 50)
-y = np.linspace(-3, 3, 40)
+x = np.linspace(-5, 5, 40)
+y = np.linspace(-5, 5, 40)
 
 X, Y = np.meshgrid(x, y)
 Z = np.reshape(ifn.predict([np.ravel(X), np.ravel(Y)]), X.shape)
@@ -100,8 +102,8 @@ cbar.set_label("T(x,y)")
 plt.errorbar(x_test, y_pred, yerr=sigmas, fmt='o', color='blue',
              ecolor='skyblue', elinewidth=3, capsize=0)
 
-plt.xlim(-3, 3)
-plt.ylim(-3, 3)
+plt.xlim(-5, 5)
+plt.ylim(-5, 5)
 
 
 plt.savefig("test.png")

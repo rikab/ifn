@@ -189,6 +189,7 @@ class IFN(keras.Model):
                     output_joint = self([x_batch, y_batch], training = True)
                     output_marginal = self([x_batch, y_shuffle], training = True)
                     loss_value =  tf.reduce_mean(tf.square(output_joint))+ tf.reduce_mean(tf.square(output_marginal)) 
+                    loss_value += sum(self.losses)
                     # loss_value = tf.reduce_mean(tf.math.exp(output_marginal), axis = 0)
 
                 grads = tape.gradient(loss_value, self.trainable_weights)
@@ -208,7 +209,7 @@ class IFN(keras.Model):
 class gIFN(IFN):
 
     # Initialize
-    def __init__(self, network_A, network_B, network_C, network_D):
+    def __init__(self, network_A, network_B, network_C, network_D = None, d_multiplier = 1.0):
 
         super(gIFN, self).__init__(network_A, network_B, network_C)
 
@@ -218,6 +219,7 @@ class gIFN(IFN):
         self.network_C = network_C
         self.network_D = network_D
 
+        self.d_multiplier = d_multiplier
 
         self.means = [0.0, 0.0]
         self.vars = [1.0, 1.0]
@@ -225,17 +227,17 @@ class gIFN(IFN):
     # Neural network function (input given output)
     def feed_forward(self, inputs):
                 
-        output_A = self.network_A(inputs[1])
-        output_B = self.network_B(inputs[1])
+        output_A = self.network_A(inputs[0])
+        output_B = self.network_B(inputs[0])
         output_C = self.network_C([inputs[0], inputs[1]])
         output_C_symmetrized = output_C
-        output_D = self.network_D(inputs[1])
+        output_D = self.network_D(inputs[0])
 
 
-        difference = inputs[0] - output_B
+        difference = inputs[1] - output_B
         matmul = (tf.matmul(output_C_symmetrized , difference[...,None]))[...,0]
 
-        output = output_A + 1.0*tf.keras.layers.Dot(axes = 1)([difference, output_D]) + 0.5 * tf.keras.layers.Dot(axes = 1)([difference, matmul ])
+        output = output_A + self.d_multiplier*tf.keras.layers.Dot(axes = 1)([difference, output_D]) + 0.5 * tf.keras.layers.Dot(axes = 1)([difference, matmul ])
         # out = tf.math.log(tf.math.softplus(output))
         return output
 
