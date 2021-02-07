@@ -36,7 +36,7 @@ pre_train_batch_size = 128
 
 N = 250000
 
-# Dataset: X = x + noise, Y = x^2
+# Gaussian Noise Dataset
 X = np.random.uniform(low = -5, high = 5, size = (N, x_dim))
 Y = X + np.random.normal(scale = 1, size = (N, x_dim))
 
